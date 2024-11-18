@@ -3,6 +3,7 @@ package station
 import (
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/abrordc/jadwal-mrt-schedule/common/client"
@@ -100,5 +101,57 @@ func ConvertDataToResponse(schedule Schedule) (response []ScheduleResponse, err 
 
 	scheduleLebakBulus := schedule.ScheduleLebakBulus
 	scheduleBundaranHI := schedule.ScheduleBundaranHi
+
+	scheduleLebakBulusParsed,err := ConvertScheduleToTimeFormat(scheduleLebakBulus)
+	if err != nil {
+		return
+	}
+
+	scheduleBundaranHIParsed,err := ConvertScheduleToTimeFormat(scheduleBundaranHI)
+	if err != nil {
+		return
+	}
+
+	//convert to response
+	for _,item := range scheduleLebakBulusParsed {
+		if item.Format("15:04") > time.Now().Format("15:04") {
+			response = append(response, ScheduleResponse{
+				StationName: LebakBulusTripName,
+				Time: item.Format("15:04"),
+			})
+		}
+	}
+
+	for _,item := range scheduleBundaranHIParsed {
+		if item.Format("15:04") > time.Now().Format("15:04") {
+			response = append(response, ScheduleResponse{
+				StationName: BundaranHITripName,
+				Time: item.Format("15:04"),
+			})
+		}
+	}
+
+	return
 	
+}
+
+func ConvertScheduleToTimeFormat(schedule string)(response []time.Time, err error){
+	var (
+		parsedTime time.Time
+		schedules = strings.Split(schedule,",")
+	)
+
+	for _,item := range schedules {
+		trimedTime := strings.TrimSpace(item)
+		if trimedTime == "" {
+			continue
+		}
+		parsedTime, err = time.Parse("15:04", trimedTime)
+		if err != nil {
+			err = errors.New("invalid time format"+ trimedTime)
+			return
+		}
+		response = append(response, parsedTime)
+	}
+	return
 }
